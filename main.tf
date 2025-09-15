@@ -378,6 +378,4 @@ module "pocp_redis" {
   create_log_group      = var.create_log_group
   log_retention_in_days = var.log_retention_in_days
 }
-
-
 ```
