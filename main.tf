@@ -3,7 +3,7 @@
 # RDS
 ###################################################################################
 
-module "pocp_rds" {
+module "cozp_rds" {
   name                   = local.project_name
   source                 = "git::https://github.com/psabdp-it/platform-infra-app-modules.git//modules/rds?ref=v1.0.8"
   db_name                = "ittdb"
@@ -43,7 +43,7 @@ module "pocp_rds" {
 ###################################################################################
 data "aws_caller_identity" "current" {}
 
-module "pocp_ecs_itt_ui" {
+module "cozp_ecs_itt_ui" {
   source = "git::https://github.com/psabdp-it/platform-infra-app-modules.git//modules/ecs-fargate?ref=v1.0.8"
   name   = local.ui_name
   env    = var.env
@@ -99,7 +99,7 @@ module "pocp_ecs_itt_ui" {
   
 }
 
-module "pocp_ecs_itt_service" {
+module "cozp_ecs_itt_service" {
   source = "git::https://github.com/psabdp-it/platform-infra-app-modules.git//modules/ecs-fargate?ref=v1.0.8"
   name   = local.service_name
   env    = var.env
@@ -154,7 +154,7 @@ module "pocp_ecs_itt_service" {
   ]
 }
 
-module "pocp_ecs_itt_scheduler" {
+module "cozp_ecs_itt_scheduler" {
   source = "git::https://github.com/psabdp-it/platform-infra-app-modules.git//modules/ecs-fargate?ref=v1.0.8"
   name   = local.scheduler_name
   env    = var.env
@@ -214,7 +214,7 @@ module "pocp_ecs_itt_scheduler" {
 # S3 Bucket
 ################################################################################
 
-module "pocp_s3_itt" {
+module "cozp_s3_itt" {
   source = "git::https://github.com/psabdp-it/platform-infra-app-modules.git//modules/s3_bucket?ref=v1.0.8"
 
   bucket_name           = "${local.project_name}-${var.bucket_intent}-bucket-${var.env}"
@@ -233,27 +233,27 @@ module "pocp_s3_itt" {
 ###################################################################################
 
 resource "aws_vpc_security_group_ingress_rule" "service" {
-  security_group_id            = module.pocp_rds.db_security_group_id
+  security_group_id            = module.cozp_rds.db_security_group_id
   description                  = "SQL/Aurora Access"
   ip_protocol                  = "tcp"
   to_port                      = 3306
   from_port                    = 3306
-  referenced_security_group_id = module.pocp_ecs_itt_service.security_group_id
+  referenced_security_group_id = module.cozp_ecs_itt_service.security_group_id
 }
 resource "aws_vpc_security_group_ingress_rule" "scheduler" {
-  security_group_id            = module.pocp_rds.db_security_group_id
+  security_group_id            = module.cozp_rds.db_security_group_id
   description                  = "SQL/Aurora Access"
   ip_protocol                  = "tcp"
   to_port                      = 3306
   from_port                    = 3306
-  referenced_security_group_id = module.pocp_ecs_itt_scheduler.security_group_id
+  referenced_security_group_id = module.cozp_ecs_itt_scheduler.security_group_id
 }
 
 ################################################################################
 # SQS Queue
 ################################################################################
 
-module "pocp_sqs_itt" {
+module "cozp_sqs_itt" {
   source = "git::https://github.com/psabdp-it/platform-infra-app-modules.git//modules//sqs?ref=v1.0.8"
 
   name                       = "${local.project_name}-data_consumer"
@@ -291,7 +291,7 @@ data "aws_iam_policy_document" "service_additional" {
       "secretsmanager:GetSecretValue",
     ]
     resources = [
-      module.pocp_rds.master_user_secret_arn,
+      module.cozp_rds.master_user_secret_arn,
       aws_secretsmanager_secret.service.arn,
     ]
   }
@@ -304,14 +304,14 @@ data "aws_iam_policy_document" "service_additional" {
       "s3:DeleteObject",
     ]
     resources = [
-      "${module.pocp_s3_itt.s3_bucket_arn}/*"
+      "${module.cozp_s3_itt.s3_bucket_arn}/*"
     ]
   }
 }
 
 resource "aws_iam_role_policy" "service_additional" {
   name   = "${local.service_name}-additional-${var.env}"
-  role   = module.pocp_ecs_itt_service.task_role_id
+  role   = module.cozp_ecs_itt_service.task_role_id
   policy = data.aws_iam_policy_document.service_additional.minified_json
 }
 
@@ -322,7 +322,7 @@ data "aws_iam_policy_document" "scheduler_additional" {
       "secretsmanager:GetSecretValue",
     ]
     resources = [
-      module.pocp_rds.master_user_secret_arn,
+      module.cozp_rds.master_user_secret_arn,
       aws_secretsmanager_secret.service.arn,
     ]
   }
@@ -335,14 +335,14 @@ data "aws_iam_policy_document" "scheduler_additional" {
       "s3:DeleteObject",
     ]
     resources = [
-      "${module.pocp_s3_itt.s3_bucket_arn}/*"
+      "${module.cozp_s3_itt.s3_bucket_arn}/*"
     ]
   }
 }
 
 resource "aws_iam_role_policy" "scheduler_additional" {
   name   = "${local.scheduler_name}-additional-${var.env}"
-  role   = module.pocp_ecs_itt_scheduler.task_role_id
+  role   = module.cozp_ecs_itt_scheduler.task_role_id
   policy = data.aws_iam_policy_document.scheduler_additional.minified_json
 }
 
@@ -350,7 +350,7 @@ resource "aws_iam_role_policy" "scheduler_additional" {
 # Elasticache
 ################################################################################
 
-module "pocp_redis" {
+module "cozp_redis" {
   source = "../platform-infra-app-modules/modules/elasticache"
 
   name           = "${local.service_name}-redis-${var.env}"
@@ -363,7 +363,7 @@ module "pocp_redis" {
   subnet_ids            = var.app_subnets
   vpc_id                = var.vpc_id
   create_security_group = var.create_security_group
-  allowed_security_group_ids    = [module.pocp_ecs_itt_service.security_group_id, module.pocp_ecs_itt_scheduler.security_group_id]
+  allowed_security_group_ids    = [module.cozp_ecs_itt_service.security_group_id, module.cozp_ecs_itt_scheduler.security_group_id]
 
   # Cluster / Replication group setup
   num_cache_nodes            = var.redis_num_cache_nodes
